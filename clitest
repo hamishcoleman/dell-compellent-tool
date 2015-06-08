@@ -10,6 +10,11 @@ use FindBin;
 use lib "$FindBin::RealBin/lib";
 use lib "/home/hamish/s/bin/lib";
 
+use Data::Dumper;
+$Data::Dumper::Indent = 1;
+$Data::Dumper::Sortkeys = 1;
+$Data::Dumper::Quotekeys = 0;
+
 use Compellent::Session;
 use HC::Common;
 
@@ -71,6 +76,20 @@ sub main {
         $xml->print;
     } elsif ($option->{output} eq 'csv') {
         print Compellent::Session::xml2csvtext($xml);
+    } elsif ($option->{output} eq 'hackdb') {
+        # quick exercise of the hackdb functions:
+
+        my $hackdb = Compellent::Session::xml2hackdb($xml);
+        #print Dumper($hackdb);
+
+        my $row = $hackdb->row(1);
+        print Dumper($row);
+        print join(',',$row->field('UserLogin','UserRealName')),"\n";
+
+        my @results = $hackdb->query(UserLogin=>'ops');
+        for my $r (@results) {
+            print join(',',$r->field('UserLogin','UserRealName')),"\n";
+        }
     }
     
 }

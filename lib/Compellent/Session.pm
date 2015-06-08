@@ -9,6 +9,8 @@ use WWW::Mechanize;
 use IO::Socket::SSL;
 use XML::Twig;
 
+use HackDB;
+
 sub new {
     my $class = shift;
     my $self = {};
@@ -208,6 +210,39 @@ sub xml2csvtext {
         push @csvtext,"# missing Data\n";
     }
     return join('',@csvtext);
+}
+
+sub xml2hackdb {
+    my ($xml) = @_;
+
+    return undef if (!defined($xml));
+
+    my $root=$xml->root();
+
+    my $attrlistnode = $root->get_xpath('CSVNode/Header/AttrList',0);
+    if (!$attrlistnode) {
+        # no attrs, no results
+        return undef;
+    }
+
+    my $columns = $attrlistnode->text();
+    chomp($columns);
+    my @column_names = split(/,/,$columns);
+
+    my $datanode = $root->get_xpath('CSVNode/Data',0);
+    if (!$datanode) {
+        # no data, no results
+        return undef;
+    }
+
+    my $data = $datanode->text();
+    CORE::open(my $fh,"<",\$data);
+
+    my $hackdb = HackDB->new();
+    $hackdb->set_column_names(@column_names);
+    $hackdb->load_csv($fh);
+
+    return $hackdb;
 }
 
 #sub NAME_GETBULKCSV {
