@@ -187,17 +187,19 @@ sub xml2csvtext {
 
     my $root=$xml->root();
 
-    push @csvtext,"# TableName= ". $root->get_xpath('CSVNode/Header/TableName',0)->text(). "\n";
-    push @csvtext,"# Subsystem= ". $root->get_xpath('CSVNode/Header/Subsystem',0)->text(). "\n";
-    push @csvtext,"# TableId= ". $root->get_xpath('CSVNode/Header/TableId',0)->text(). "\n";
-    push @csvtext,"# SubsystemId= ". $root->get_xpath('CSVNode/Header/SubsystemId',0)->text(). "\n";
-
     my $attrlistnode = $root->get_xpath('CSVNode/Header/AttrList',0);
     if ($attrlistnode) {
         push @csvtext,$attrlistnode->text();
     } else {
         push @csvtext,"# missing AttrList\n";
     }
+
+    push @csvtext,"\n";
+    push @csvtext,"# TableName= ". $root->get_xpath('CSVNode/Header/TableName',0)->text(). "\n";
+    push @csvtext,"# Subsystem= ". $root->get_xpath('CSVNode/Header/Subsystem',0)->text(). "\n";
+    push @csvtext,"# TableId= ". $root->get_xpath('CSVNode/Header/TableId',0)->text(). "\n";
+    push @csvtext,"# SubsystemId= ". $root->get_xpath('CSVNode/Header/SubsystemId',0)->text(). "\n";
+    push @csvtext,"\n";
 
     my $datanode = $root->get_xpath('CSVNode/Data',0);
     if ($datanode) {
