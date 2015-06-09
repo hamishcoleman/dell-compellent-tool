@@ -247,19 +247,19 @@ sub xml2hackdb {
 
 # Use GETBULKCSV, but cache the results in the session
 sub table {
-    my ($self,$table) = @_;
+    my ($self,$tablename) = @_;
 
-    if (defined($self->{_table}{$table})) {
-        return $self->{_table}{$table};
+    if (defined($self->{_table}{$tablename})) {
+        return $self->{_table}{$tablename};
     }
 
-    my $xml = $self->_query('NAME_GETBULKCSV',$table);
+    my $xml = $self->_query('NAME_GETBULKCSV',$tablename);
     return undef if (!defined($xml));
 
     my $table = xml2hackdb($xml);
     return undef if (!defined($table));
 
-    $self->{_table}{$table} = $table;
+    $self->{_table}{$tablename} = $table;
     return $table;
 }
 
