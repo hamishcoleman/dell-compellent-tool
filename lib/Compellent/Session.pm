@@ -245,11 +245,22 @@ sub xml2hackdb {
     return $hackdb;
 }
 
-#sub NAME_GETBULKCSV {
-#    my ($self,$cmdtype) = @_;
-#
-#    my $xml = $self->_query('NAME_GETBULKCSV',$cmdtype);
-#    return xml2csvtext($xml);
-#}
+# Use GETBULKCSV, but cache the results in the session
+sub table {
+    my ($self,$table) = @_;
+
+    if (defined($self->{_table}{$table})) {
+        return $self->{_table}{$table};
+    }
+
+    my $xml = $self->_query('NAME_GETBULKCSV',$table);
+    return undef if (!defined($xml));
+
+    my $table = xml2hackdb($xml);
+    return undef if (!defined($table));
+
+    $self->{_table}{$table} = $table;
+    return $table;
+}
 
 1;

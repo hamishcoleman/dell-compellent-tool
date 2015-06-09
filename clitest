@@ -65,31 +65,41 @@ sub main {
     }
 
     if (!$ARGV[0]) { return; }
+    my $cmd = shift @ARGV;
 
-    my $xml = $session->_query($ARGV[0],$ARGV[1]);
-    if (!defined($xml)) {
-        show_err($session);
-    }
+    if ($cmd eq 'table') {
+        if (!$ARGV[0]) { return; }
+        my $table = $session->table($ARGV[0]);
+        if (!defined($table)) {
+            show_err($session);
+        }
+        print Dumper($table);
 
-    if ($option->{output} eq 'xml') {
-        $xml->set_pretty_print("indented_a");
-        $xml->print;
-    } elsif ($option->{output} eq 'csv') {
-        print Compellent::Session::xml2csvtext($xml);
-    } elsif ($option->{output} eq 'hackdb') {
-        # quick exercise of the hackdb functions:
+#        # quick exercise of the hackdb functions:
+#
+#        my $row = $table->row(1);
+#        print Dumper($row);
+#        print join(',',$row->field('UserLogin','UserRealName')),"\n";
+#
+#        my $results = $table->query(UserLogin=>'ops');
+#        $results->foreach(sub {
+#            print join(',',$_->field('UserLogin','UserRealName')),"\n";
+#        });
 
-        my $hackdb = Compellent::Session::xml2hackdb($xml);
-        #print Dumper($hackdb);
+    } else {
+        # no known command, do a raw query
+        if (!$ARGV[0]) { return; }
+        my $xml = $session->_query($cmd,$ARGV[0]);
+        if (!defined($xml)) {
+            show_err($session);
+        }
 
-        my $row = $hackdb->row(1);
-        print Dumper($row);
-        print join(',',$row->field('UserLogin','UserRealName')),"\n";
-
-        my $results = $hackdb->query(UserLogin=>'ops');
-        $results->foreach(sub {
-            print join(',',$_->field('UserLogin','UserRealName')),"\n";
-        });
+        if ($option->{output} eq 'xml') {
+            $xml->set_pretty_print("indented_a");
+            $xml->print;
+        } elsif ($option->{output} eq 'csv') {
+            print Compellent::Session::xml2csvtext($xml);
+        }
     }
     
 }
