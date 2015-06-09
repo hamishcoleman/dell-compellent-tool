@@ -109,5 +109,31 @@ sub query {
     return $results;
 }
 
+sub extract {
+    my ($self) = shift;
+    my @fields = @_;
+
+    my $results = HackDB->new();
+    $self->foreach( sub {
+        $results->_add_row($_->extract(@fields));
+    });
+    return $results;
+}
+
+sub print_columns {
+    my ($self) = shift;
+    my @columns = $self->row(0)->column_names();
+    print(join(',',@columns));
+}
+
+sub print {
+    my ($self) = shift;
+    $self->print_columns();
+    print("\n");
+    $self->foreach( sub {
+        $_->print();
+    });
+    return $self;
+}
 
 1;

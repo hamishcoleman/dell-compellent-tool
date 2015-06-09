@@ -75,4 +75,25 @@ sub column_names {
     return @columns;
 }
 
+sub extract {
+    my ($self) = shift;
+    my @fields = @_;
+
+    my $name2nr;
+
+    my $nr = 0;
+    for my $column (@fields) {
+        $name2nr->{$column} = $nr++;
+    }
+
+    my @rowdata = $self->field(@fields);
+    my $row = HackDB::Row->new($name2nr,\@rowdata);
+    return $row;
+}
+
+sub print {
+    my ($self) = shift;
+    print(join(',',@{$self->_rowdata()}));
+}
+
 1;

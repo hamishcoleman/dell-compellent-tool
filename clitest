@@ -69,22 +69,34 @@ sub main {
 
     if ($cmd eq 'table') {
         if (!$ARGV[0]) { return; }
-        my $table = $session->table($ARGV[0]);
+        my $tablename = shift @ARGV;
+        my $table = $session->table($tablename);
         if (!defined($table)) {
             show_err($session);
         }
-        print Dumper($table);
 
-#        # quick exercise of the hackdb functions:
-#
-#        my $row = $table->row(1);
-#        print Dumper($row);
-#        print join(',',$row->field('UserLogin','UserRealName')),"\n";
-#
-#        my $results = $table->query(UserLogin=>'ops');
-#        $results->foreach(sub {
-#            print join(',',$_->field('UserLogin','UserRealName')),"\n";
-#        });
+        if ($option->{debug}) {
+            print Dumper($table);
+        }
+
+        my $results;
+        if (defined($ARGV[0])) {
+            # search for a specific matching set from the data
+            my $column = shift @ARGV;
+            my $matchto = shift @ARGV;
+            $results = $table->query($column=>$matchto);
+        } else {
+            $results = $table;
+        }
+
+        if (defined($ARGV[0])) {
+            # extract a specific set of columns
+            $results = $results->extract(@ARGV);
+        }
+
+        $results->print();
+        print("\n");
+
 
     } else {
         # no known command, do a raw query
