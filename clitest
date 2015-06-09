@@ -86,10 +86,10 @@ sub main {
         print Dumper($row);
         print join(',',$row->field('UserLogin','UserRealName')),"\n";
 
-        my @results = $hackdb->query(UserLogin=>'ops');
-        for my $r (@results) {
-            print join(',',$r->field('UserLogin','UserRealName')),"\n";
-        }
+        my $results = $hackdb->query(UserLogin=>'ops');
+        $results->foreach(sub {
+            print join(',',$_->field('UserLogin','UserRealName')),"\n";
+        });
     }
     
 }

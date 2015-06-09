@@ -64,7 +64,15 @@ sub match {
 }
 
 sub column_names {
-    die "unimplemnted";
+    my ($self) = @_;
+    my @columns;
+
+    while (my ($field, $nr) = each %{$self->{column_name2nr}}) {
+        $columns[$nr] = $field;
+        # TODO - perhaps confirm that there are no overwrites?
+    }
+
+    return @columns;
 }
 
 1;

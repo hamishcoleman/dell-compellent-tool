@@ -21,15 +21,12 @@ sub new {
 
 sub set_column_names {
     my ($self) = shift;
-    @{$self->{column_names}} = @_;
     my $nr = 0;
     for my $column (@_) {
         $self->{column_name2nr}{$column} = $nr++;
     }
     return $self;
 }
-
-sub column_names { return @{shift->{column_names}}; }
 
 sub set_rowdata {
     my ($self,$rownr,$data) = @_;
@@ -47,6 +44,17 @@ sub _column_name2nr {
     return $self->{column_name2nr};
 }
 
+sub _add_row {
+    my ($self,$row) = @_;
+    if (!defined($self->{column_name2nr})) {
+        $self->set_column_names($row->column_names());
+    }
+
+    # TODO - confirm that the columns from this row match our existing ones
+    $self->set_rowdata($self->_row_count(),$row->_rowdata());
+    return $self;
+}
+
 sub row {
     my ($self,$rownr) = @_;
     return HackDB::Row->new($self->_column_name2nr(),$self->_rowdata($rownr));
@@ -54,7 +62,11 @@ sub row {
 
 sub _row_count {
     my ($self) = @_;
-    return scalar(@{$self->{data}});
+    if (defined($self->{data})) {
+        return scalar(@{$self->{data}});
+    } else {
+        return 0;
+    }
 }
 
 sub load_csv {
@@ -74,19 +86,27 @@ sub load_csv {
     return $self;
 }
 
+sub foreach {
+    my ($self,$code) = @_;
+
+    my $rownr=0;
+    while ($rownr < $self->_row_count()) {
+        $_ = $self->row($rownr++);
+        &{$code}();
+    }
+}
+
 sub query {
     my ($self) = shift;
     my %args = ( @_ );
 
-    my @results;
-    my $rownr=0;
-    while ($rownr < $self->_row_count()) {
-        my $row = $self->row($rownr++);
-        if ($row->match(%args)) {
-            push @results,$row;
+    my $results = HackDB->new();
+    $self->foreach( sub {
+        if ($_->match(%args)) {
+            $results->_add_row($_);
         }
-    }
-    return @results;
+    });
+    return $results;
 }
 
 
