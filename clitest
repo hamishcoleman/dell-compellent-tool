@@ -68,6 +68,8 @@ sub main {
     my $cmd = shift @ARGV;
 
     if ($cmd eq 'table') {
+        # A generic bulk get table / select row / extract command
+
         if (!$ARGV[0]) { return; }
         my $tablename = shift @ARGV;
         my $table = $session->table($tablename);
@@ -97,6 +99,62 @@ sub main {
         $results->print();
         print("\n");
 
+    } elsif ($cmd eq 'repl_pitc') {
+        # give a report on the date of the most recent PITC for each volume
+
+        my $pitc   = $session->table('TYPE_PITC');
+        my $volume = $session->table('TYPE_VOLUME');
+
+        # select only the "frozen" entries
+        $pitc = $pitc->query( State => 2 );
+
+        # extract the last seen entry for each history number
+        my $lastseen;
+        $pitc->foreach(sub {
+            my $f_history = ($_->field('History'))[0];
+            if (!defined($lastseen->{$f_history})) {
+                $lastseen->{$f_history} = $_;
+                return;
+            }
+
+            my $f_index = ($_->field('Index'))[0];
+            my $old_index = ($lastseen->{$f_history}->field('Index'))[0];
+            if ($f_index > $old_index) {
+                $lastseen->{$f_history} = $_;
+                return;
+            }
+        });
+
+        # rebuild the table with only the lastseen rows
+        $pitc = HackDB->new();
+        for my $row (values(%{$lastseen})) {
+            $pitc->_add_row($row);
+        }
+
+        my $volume2name;
+        $volume->foreach(sub {
+            $volume2name->{($_->field('Index'))[0]} = ($_->field('Name'))[0]
+        });
+
+        # lookup the volume name and substitute it for the id
+        $pitc->foreach(sub {
+            my $index = ($_->field('CreateVolumeIndex'))[0];
+            $_->_set_field('CreateVolumeIndex',$volume2name->{$index});
+        });
+
+        # extract just the columns that are interesting
+        $pitc = $pitc->extract(qw(
+            FreezeTime 
+            CreateVolumeIndex
+            OriginalCopyHistory OriginalSystemId
+            History Index
+            State
+            CreateTime
+        ));
+
+        # print it out
+        $pitc->print();
+        print("\n");
 
     } else {
         # no known command, do a raw query

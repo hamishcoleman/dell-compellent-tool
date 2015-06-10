@@ -40,6 +40,12 @@ sub _column_name2nr {
     return $self->{column_name2nr}{$column};
 }
 
+sub _set_field {
+    my ($self,$field,$val) = @_;
+    @{$self->_rowdata()}[$self->_column_name2nr($field)] = $val;
+    return $self;
+}
+
 sub field {
     my ($self) = shift;
     my @result;
