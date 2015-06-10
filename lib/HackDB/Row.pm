@@ -40,9 +40,30 @@ sub _column_name2nr {
     return $self->{column_name2nr}{$column};
 }
 
+# Given an existing column name, update that field to new data
 sub _set_field {
     my ($self,$field,$val) = @_;
-    @{$self->_rowdata()}[$self->_column_name2nr($field)] = $val;
+    my $fieldnr = $self->_column_name2nr($field);
+
+    # Dont update a non-existant field
+    return undef if (!$fieldnr);
+
+    @{$self->_rowdata()}[$fieldnr] = $val;
+    return $self;
+}
+
+# Add a new field heading if needed, then set the value of that field
+sub _add_field {
+    my ($self,$field,$val) = @_;
+
+    # Dont add an existing field
+    if (!defined($self->_column_name2nr($field))) {
+        my $fieldnr = scalar( keys (%{$self->{column_name2nr}}));
+printf("%s:%s: %s\n",__FILE__,__LINE__,$fieldnr);
+        $self->{column_name2nr}{$field} = $fieldnr;
+    }
+
+    $self->_set_field($field,$val);
     return $self;
 }
 

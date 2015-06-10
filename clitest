@@ -139,7 +139,7 @@ sub main {
         # lookup the volume name and substitute it for the id
         $pitc->foreach(sub {
             my $index = ($_->field('CreateVolumeIndex'))[0];
-            $_->_set_field('CreateVolumeIndex',$volume2name->{$index});
+            $_->_add_field('Name',$volume2name->{$index});
         });
 
         # extract just the columns that are interesting
@@ -150,6 +150,7 @@ sub main {
             History Index
             State
             CreateTime
+            Name
         ));
 
         # print it out
