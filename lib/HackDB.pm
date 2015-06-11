@@ -122,7 +122,10 @@ sub extract {
 
 sub print_columns {
     my ($self) = shift;
-    my @columns = $self->row(0)->column_names();
+    my $row = $self->row(0);
+    return undef if (!defined($row));
+
+    my @columns = $row->column_names();
     print(join(',',@columns));
 }
 

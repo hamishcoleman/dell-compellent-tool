@@ -99,6 +99,103 @@ sub main {
         $results->print();
         print("\n");
 
+    } elsif ($cmd eq 'repl_blocksremaining') {
+        # output the total of the table CMS BlocksRemaining column
+
+        my $table_cms = $session->table('TYPE_CMS');
+
+        if (!defined($table_cms)) {
+            print("No Copy/Mirror/Swap table!?\n");
+            return undef; # TODO - return an errorcode
+        }
+
+        my $blocksremaining = 0;
+        $table_cms->foreach(sub {
+            $blocksremaining+=$_->field('BlocksRemaining');
+        });
+
+        print $blocksremaining,"\n";
+
+    } elsif ($cmd eq 'repl_stateok') {
+        #TODO
+
+        # want a report that says that replication is not paused, is
+        # not missing and a couple of other things
+
+        my $table_cms = $session->table('TYPE_CMS');
+
+        if (!defined($table_cms)) {
+            print("No Copy/Mirror/Swap table!?\n");
+            return undef; # TODO - return an errorcode
+        }
+
+        my $table_cms_filter = HackDB->new();
+        $table_cms->foreach(sub {
+            my $state = $_->field('State');
+            return if ($state == 6); # 6 = running == ok
+            return if ($state == 10); # 10 = synced == ok
+            # 11 = completed == ok?
+
+            # all others == error?
+            $table_cms_filter->_add_row($_);
+
+        });
+
+        # TODO - a nagios output mode
+        $table_cms_filter->print(); # output an empty list if no errors seen
+
+    } elsif ($cmd eq 'repl_missing') {
+        # give a report on which volumes do not have replication setup
+        #
+        # "replication setup" is defined as showing up as either the source
+        # or dest volume in the copy/mirror/swap table
+
+        my $table_cms = $session->table('TYPE_CMS');
+
+        if (!defined($table_cms)) {
+            print("No Copy/Mirror/Swap table!?\n");
+            return undef; # TODO - return an errorcode
+        }
+
+        my $table_volume = $session->table('TYPE_VOLUME');
+
+        $table_volume->foreach(sub {
+            my $vol = $_;
+            my $index = $vol->field('Index');
+            my $name = $vol->field('Name');
+
+            my $src = $table_cms->query( SourceVolume => $index );
+            die("ASSERT") if ($src->_row_count()>1);
+            if ($src->_row_count()==1) {
+                $vol->_add_field('_REPL','SRC');
+                return;
+            }
+
+            my $dst = $table_cms->query( DestVolume => $index );
+            die("ASSERT") if ($dst->_row_count()>1);
+            if ($dst->_row_count()==1) {
+                $vol->_add_field('_REPL','DST');
+                return;
+            }
+
+            # neither a source nor a dest matched..
+            $vol->_add_field('_REPL','NONE');
+        });
+
+        # TODO - allow loading an exceptions list
+
+        # TODO - allow skipping the query to get a full report
+        $table_volume = $table_volume->query( _REPL => 'NONE' );
+
+        $table_volume = $table_volume->extract(qw(
+            Index
+            Name
+            _REPL
+        ));
+
+        # TODO - have a nagios output mode
+        $table_volume->print();
+
     } elsif ($cmd eq 'repl_pitc') {
         # give a report on the date of the most recent PITC for each volume
 
@@ -111,14 +208,14 @@ sub main {
         # extract the last seen entry for each history number
         my $lastseen;
         $pitc->foreach(sub {
-            my $f_history = ($_->field('History'))[0];
+            my $f_history = $_->field('History');
             if (!defined($lastseen->{$f_history})) {
                 $lastseen->{$f_history} = $_;
                 return;
             }
 
-            my $f_index = ($_->field('Index'))[0];
-            my $old_index = ($lastseen->{$f_history}->field('Index'))[0];
+            my $f_index = $_->field('Index');
+            my $old_index = $lastseen->{$f_history}->field('Index');
             if ($f_index > $old_index) {
                 $lastseen->{$f_history} = $_;
                 return;
@@ -133,18 +230,18 @@ sub main {
 
         my $volume2name;
         $volume->foreach(sub {
-            $volume2name->{($_->field('Index'))[0]} = ($_->field('Name'))[0]
+            $volume2name->{$_->field('Index')} = $_->field('Name')
         });
 
         # lookup the volume name and substitute it for the id
         $pitc->foreach(sub {
-            my $index = ($_->field('CreateVolumeIndex'))[0];
+            my $index = $_->field('CreateVolumeIndex');
             $_->_add_field('Name',$volume2name->{$index});
         });
 
         # extract just the columns that are interesting
         $pitc = $pitc->extract(qw(
-            FreezeTime 
+            FreezeTime
             CreateVolumeIndex
             OriginalCopyHistory OriginalSystemId
             History Index
@@ -172,7 +269,7 @@ sub main {
             print Compellent::Session::xml2csvtext($xml);
         }
     }
-    
+
 }
 main();
 

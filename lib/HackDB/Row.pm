@@ -59,7 +59,6 @@ sub _add_field {
     # Dont add an existing field
     if (!defined($self->_column_name2nr($field))) {
         my $fieldnr = scalar( keys (%{$self->{column_name2nr}}));
-printf("%s:%s: %s\n",__FILE__,__LINE__,$fieldnr);
         $self->{column_name2nr}{$field} = $fieldnr;
     }
 
@@ -71,7 +70,11 @@ sub field {
     my ($self) = shift;
     my @result;
     for my $column (@_) {
-        push @result, @{$self->_rowdata()}[$self->_column_name2nr($column)]
+        my $this = @{$self->_rowdata()}[$self->_column_name2nr($column)];
+        if (!wantarray()) {
+            return $this;
+        }
+        push @result, $this;
     }
     return @result;
 }
