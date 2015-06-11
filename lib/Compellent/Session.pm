@@ -5,7 +5,7 @@ use strict;
 # Setup a session with a compellent
 #
 
-use WWW::Mechanize;
+use LWP::UserAgent;
 use IO::Socket::SSL;
 use XML::Twig;
 
@@ -17,7 +17,10 @@ sub new {
     bless $self, $class;
     #$self->_handle_args(@_);
 
-    $self->set_mech(WWW::Mechanize->new());
+    my $ua = LWP::UserAgent->new;
+    $ua->agent("$class/0.1");
+
+    $self->set_ua($ua);
     return $self;
 }
 
@@ -44,9 +47,9 @@ sub set_password {
     return $self;
 }
 
-sub set_mech {
-    my ($self,$mech) = @_;
-    $self->{mech} = $mech;
+sub set_ua {
+    my ($self,$ua) = @_;
+    $self->{ua} = $ua;
     return $self;
 }
 
@@ -71,7 +74,7 @@ sub set_errmsg {
 sub baseurl    { return shift->{baseurl}; }
 sub username   { return shift->{username}; }
 sub password   { return shift->{password}; }
-sub mech       { return shift->{mech}; }
+sub ua         { return shift->{ua}; }
 sub sessionkey { return shift->{sessionkey}; }
 sub errcode    { return shift->{errcode}; }
 sub errmsg     { return shift->{errmsg}; }
@@ -86,7 +89,7 @@ sub no_check_certificate {
     # However, that requires the active participation of the people
     # installing the SAN to actually use a real cert...
 
-    $self->mech->ssl_opts(
+    $self->ua->ssl_opts(
         SSL_verify_mode => IO::Socket::SSL::SSL_VERIFY_NONE,
         verify_hostname => 0,
     );
@@ -103,7 +106,7 @@ sub open {
     my $username = $self->username;
     my $password = $self->password;
 
-    $self->mech->post($self->baseurl."/compellent/post",
+    my $res = $self->ua->post($self->baseurl."/compellent/post",
         Content_Type => "text/xml",
         Content      => <<EOT,
 <xml>
@@ -126,8 +129,14 @@ sub open {
 EOT
     );
 
+    if (!$res->is_success) {
+        # TODO - more? or even just die?
+        warn $res->status_line;
+        return undef;
+    }
+
     my $xml = XML::Twig->new();
-    $xml->parse($self->mech->content);
+    $xml->parse($res->decoded_content);
 
     my $root=$xml->root();
     my $errcode = $root->get_xpath('status/errcode',0)->text();
@@ -147,7 +156,7 @@ sub _query {
 
     my $sessionkey = $self->sessionkey;
 
-    $self->mech->post($self->baseurl."/compellent/post",
+    my $res = $self->ua->post($self->baseurl."/compellent/post",
         Content_Type => "text/xml",
         Content      => <<EOT,
 <xml>
@@ -167,8 +176,14 @@ sub _query {
 EOT
     );
 
+    if (!$res->is_success) {
+        # TODO - more? or even just die?
+        warn $res->status_line;
+        return undef;
+    }
+
     my $xml = XML::Twig->new();
-    $xml->parse($self->mech->content);
+    $xml->parse($res->decoded_content);
 
     my $root=$xml->root();
     my $errcode_n = $root->get_xpath('status/errcode',0);
