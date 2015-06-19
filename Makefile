@@ -9,7 +9,10 @@ tarfile := $(NAME)-$(describe).tar.gz
 all:    test
 
 build_dep:
-	aptitude install libtext-csv-perl libwww-mechanize-perl libtext-csv-perl libio-socket-ssl-perl libxml-twig-perl
+	aptitude install libtext-csv-perl liblwp-protocol-https-perl libio-socket-ssl-perl libxml-twig-perl
+
+build_dep_rpm:
+	yum install perl-Text-CSV perl-Crypt-SSLeay perl-IO-Socket-SSL perl-XML-Twig
 
 install: clean
 	mkdir -p $(INSTALLDIR)
