@@ -242,11 +242,12 @@ sub main {
         # extract just the columns that are interesting
         $pitc = $pitc->extract(qw(
             FreezeTime
-            CreateVolumeIndex
-            OriginalCopyHistory OriginalSystemId
-            History Index
-            State
             CreateTime
+            CreateVolumeIndex
+            History
+            OriginalCopyHistory OriginalSystemId
+            Index
+            State
             Name
         ));
 
