@@ -59,11 +59,6 @@ sub main {
         $session->no_check_certificate();
     }
 
-    my $err=$session->open();
-    if (!defined($err)) {
-        show_err($session);
-    }
-
     if (!$ARGV[0]) { return; }
     my $cmd = shift @ARGV;
 

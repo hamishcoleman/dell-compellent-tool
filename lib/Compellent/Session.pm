@@ -20,6 +20,7 @@ sub new {
     my $ua = LWP::UserAgent->new;
     $ua->agent("$class/0.1");
 
+    $self->set_sessionstate('new');
     $self->set_ua($ua);
     return $self;
 }
@@ -59,6 +60,12 @@ sub set_sessionkey {
     return $self;
 }
 
+sub set_sessionstate {
+    my ($self,$sessionstate) = @_;
+    $self->{sessionstate} = $sessionstate;
+    return $self;
+}
+
 sub set_errcode {
     my ($self,$errcode) = @_;
     $self->{errcode} = $errcode;
@@ -71,13 +78,15 @@ sub set_errmsg {
     return $self;
 }
 
-sub baseurl    { return shift->{baseurl}; }
-sub username   { return shift->{username}; }
-sub password   { return shift->{password}; }
-sub ua         { return shift->{ua}; }
-sub sessionkey { return shift->{sessionkey}; }
-sub errcode    { return shift->{errcode}; }
-sub errmsg     { return shift->{errmsg}; }
+
+sub baseurl      { return shift->{baseurl}; }
+sub username     { return shift->{username}; }
+sub password     { return shift->{password}; }
+sub ua           { return shift->{ua}; }
+sub sessionkey   { return shift->{sessionkey}; }
+sub sessionstate { return shift->{sessionstate}; }
+sub errcode      { return shift->{errcode}; }
+sub errmsg       { return shift->{errmsg}; }
 
 ######################################################################
 
@@ -97,6 +106,12 @@ sub no_check_certificate {
 
 sub open {
     my ($self) = @_;
+
+    if ($self->sessionstate() eq 'open') {
+        # no need to open a new one
+        # TODO - what about timeouts, etc
+        return $self;
+    }
 
     # sanity check the required params
     return undef if(!defined($self->baseurl));
@@ -143,16 +158,21 @@ EOT
     if ($errcode) {
         $self->set_errcode($errcode);
         $self->set_errmsg($root->get_xpath('status/errmsg',0)->text());
+        $self->set_sessionstate('error');
         return undef;
     }
 
     $self->set_sessionkey($root->get_xpath('session/key',0)->text());
+    $self->set_sessionstate('open');
 
     return $self;
 }
 
 sub _query {
     my ($self,$cmdname,$cmdtype) = @_;
+
+    # ensure we have a valid session
+    return undef if (!defined($self->open()));
 
     my $sessionkey = $self->sessionkey;
 
