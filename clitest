@@ -16,6 +16,8 @@ $Data::Dumper::Sortkeys = 1;
 $Data::Dumper::Quotekeys = 0;
 
 use Compellent::Session;
+use CredentialStore;
+
 use HC::Common;
 
 my $option = {
@@ -29,6 +31,7 @@ my @option_list = (
     "password=s",
     "no-check-certificate!",
     "output=s",
+    "credfile=s",
 );
 
 sub show_err {
@@ -43,17 +46,26 @@ sub main {
     HC::Common::do_options($option,@option_list);
     return if (defined($option->{help}));
 
-    # required options
-    foreach (qw(host username password)) {
-        if (!defined($option->{$_})) {
-            die("need $_ parameter\n");
-        }
+    my ($username,$password);
+    if (defined($option->{credfile})) {
+        my $cred = CredentialStore->new($option->{credfile});
+        die("credfile error") if (!defined($cred));
+
+        ($username,$password) = $cred->lookup($option->{host});
     }
+
+    if (defined($option->{username})) {$username = $option->{username};}
+    if (defined($option->{password})) {$password = $option->{password};}
+
+    # required options
+    die("need host parameter\n") if (!defined($option->{host}));
+    die("need username parameter\n") if (!defined($username));
+    die("need password parameter\n") if (!defined($password));
 
     my $session = Compellent::Session->new();
     $session->set_baseurl("https://".$option->{host});
-    $session->set_username($option->{username});
-    $session->set_password($option->{password});
+    $session->set_username($username);
+    $session->set_password($password);
 
     if (defined($option->{'no-check-certificate'})) {
         $session->no_check_certificate();
