@@ -10,6 +10,7 @@ use IO::Socket::SSL;
 use XML::Twig;
 
 use HackDB;
+use HackCache;
 
 sub new {
     my $class = shift;
@@ -22,6 +23,11 @@ sub new {
 
     $self->set_sessionstate('new');
     $self->set_ua($ua);
+
+    my $cache = HackCache->new();
+    $cache->set_cachedir($ENV{'HOME'}.'/.cache/compellent');
+    $self->set_cache($cache);
+
     return $self;
 }
 
@@ -78,6 +84,12 @@ sub set_errmsg {
     return $self;
 }
 
+sub set_cache {
+    my ($self,$cache) = @_;
+    $self->{cache} = $cache;
+    return $self;
+}
+
 
 sub baseurl      { return shift->{baseurl}; }
 sub username     { return shift->{username}; }
@@ -87,6 +99,7 @@ sub sessionkey   { return shift->{sessionkey}; }
 sub sessionstate { return shift->{sessionstate}; }
 sub errcode      { return shift->{errcode}; }
 sub errmsg       { return shift->{errmsg}; }
+sub cache        { return shift->{cache}; }
 
 ######################################################################
 
@@ -171,14 +184,24 @@ EOT
 sub _query {
     my ($self,$cmdname,$cmdtype) = @_;
 
-    # ensure we have a valid session
-    return undef if (!defined($self->open()));
+    my $content;
+    my $cachekey = $self->baseurl.','.$cmdname.','.$cmdtype;
+    $cachekey =~ y(:/)(_);
 
-    my $sessionkey = $self->sessionkey;
+    # first, look for a cached copy of the data
+    my $contentref = $self->cache->get($cachekey);
 
-    my $res = $self->ua->post($self->baseurl."/compellent/post",
-        Content_Type => "text/xml",
-        Content      => <<EOT,
+    if (!defined($contentref)) {
+        # no valid cached content found, so move on to fetching some data
+
+        # ensure we have a valid session
+        return undef if (!defined($self->open()));
+
+        my $sessionkey = $self->sessionkey;
+
+        my $res = $self->ua->post($self->baseurl."/compellent/post",
+            Content_Type => "text/xml",
+            Content      => <<EOT,
 <xml>
 <version>
 <messagever>mcXMLv1.0</messagever>
@@ -194,16 +217,24 @@ sub _query {
 </cmd>
 </xml>
 EOT
-    );
+        );
 
-    if (!$res->is_success) {
-        # TODO - more? or even just die?
-        warn $res->status_line;
-        return undef;
+        if (!$res->is_success) {
+            # TODO - more? or even just die?
+            warn $res->status_line;
+            return undef;
+        }
+
+        $content = $res->decoded_content;
+
+        # save this result in the cache
+        $self->cache->put($cachekey,\$content);
+    } else {
+        $content = ${$contentref};
     }
 
     my $xml = XML::Twig->new();
-    $xml->parse($res->decoded_content);
+    $xml->parse($content);
 
     my $root=$xml->root();
     my $errcode_n = $root->get_xpath('status/errcode',0);
