@@ -127,6 +127,8 @@ sub open {
     }
 
     # sanity check the required params
+    $self->set_errcode(-1);
+    $self->set_errmsg('bad params');
     return undef if(!defined($self->baseurl));
     return undef if(!defined($self->username));
     return undef if(!defined($self->password));
@@ -158,8 +160,8 @@ EOT
     );
 
     if (!$res->is_success) {
-        # TODO - more? or even just die?
-        warn $res->status_line;
+        $self->set_errcode(-1);
+        $self->set_errmsg($res->status_line);
         return undef;
     }
 
@@ -177,6 +179,7 @@ EOT
 
     $self->set_sessionkey($root->get_xpath('session/key',0)->text());
     $self->set_sessionstate('open');
+    $self->set_errcode(0);
 
     return $self;
 }
@@ -220,8 +223,8 @@ EOT
         );
 
         if (!$res->is_success) {
-            # TODO - more? or even just die?
-            warn $res->status_line;
+            $self->set_errcode(-1);
+            $self->set_errmsg($res->status_line);
             return undef;
         }
 
@@ -244,6 +247,7 @@ EOT
         return undef;
     }
 
+    $self->set_errcode(0);
     return $xml;
 }
 
@@ -323,7 +327,10 @@ sub table {
     return undef if (!defined($xml));
 
     my $table = xml2hackdb($xml);
-    return undef if (!defined($table));
+    if (!defined($table)) {
+        $self->set_errcode(-1);
+        $self->set_errmsg('xml table error');
+    }
 
     $self->{_table}{$tablename} = $table;
     return $table;
