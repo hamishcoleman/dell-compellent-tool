@@ -111,6 +111,10 @@ sub no_check_certificate {
     # However, that requires the active participation of the people
     # installing the SAN to actually use a real cert...
 
+    # The version of LWP on OEL6.3 on our nagios server cannot do this?!
+    # - luckily, it is old enough that it defaults to no verification :-(
+    return undef if (!$self->ua->can('ssl_opts'));
+
     $self->ua->ssl_opts(
         SSL_verify_mode => IO::Socket::SSL::SSL_VERIFY_NONE,
         verify_hostname => 0,
