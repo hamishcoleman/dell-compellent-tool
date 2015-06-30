@@ -121,21 +121,20 @@ sub current_rate {
 
     my $current_rate;
 
-    if (defined($db->{prev_time}) && defined($db->{prev_blocks})) {
-        $db->{delta_time} = $time - $db->{prev_time};
-        $db->{delta_blocks} = $blocks - $db->{prev_blocks};
+    if (defined($db->{prev}{time}) && defined($db->{prev}{blocks})) {
+        $db->{delta}{time} = $time - $db->{prev}{time};
+        $db->{delta}{blocks} = $blocks - $db->{prev}{blocks};
 
         # remember: cannot get a rate with no delta.time
-        if ($db->{delta_time} > 0) {
-            $current_rate = $db->{delta_blocks} / $db->{delta_time};
+        if ($db->{delta}{time} > 0) {
+            $current_rate = $db->{delta}{blocks} / $db->{delta}{time};
         }
     } else {
-        delete $db->{delta_time};
-        delete $db->{delta_blocks};
+        delete $db->{delta};
     }
 
-    $db->{prev_time} = $time;
-    $db->{prev_blocks} = $blocks;
+    $db->{prev}{time} = $time;
+    $db->{prev}{blocks} = $blocks;
 
     return $current_rate;
 }
@@ -196,15 +195,14 @@ sub main {
         # if we are in sync - or very close to it,
         # then we dont want to distort things by adding this to the history
         #
-        # FIXME - should really use the delta_time to multiply the
+        # FIXME - should really use the delta.time to multiply the
         # average_rate
 
         $output->{current_rate}    = '\N';
         $output->{remaining_time } = 0;
 
         # however, we do need to forget the prev values
-        delete $db->{prev_time};
-        delete $db->{prev_blocks};
+        delete $db->{prev};
     } else {
         # add the current data to the pool and recalculate the average sync rate
 
