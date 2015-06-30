@@ -1,7 +1,7 @@
 
 NAME := compellenttool
 INSTALLROOT := installdir
-INSTALLDIR := $(INSTALLROOT)/usr/local/lib/site_perl
+INSTALLDIR := $(INSTALLROOT)/$(NAME)
 
 describe := $(shell git describe --dirty)
 tarfile := $(NAME)-$(describe).tar.gz
@@ -15,7 +15,9 @@ build_dep_rpm:
 	yum install perl-Text-CSV perl-Crypt-SSLeay perl-IO-Socket-SSL perl-XML-Twig
 
 install: clean
-	mkdir -p $(INSTALLDIR)
+	install -d $(INSTALLDIR)
+	cp -pr lib $(INSTALLDIR)
+	install -p -t $(INSTALLDIR) clitest check_blocksremaining
 	echo install -p test_harness $(INSTALLDIR)
 	echo cp -pr HC $(INSTALLDIR)
 
