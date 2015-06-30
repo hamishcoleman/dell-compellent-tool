@@ -1,0 +1,262 @@
+#!/usr/bin/env perl
+use warnings;
+use strict;
+#
+# Nagios check script for reporting on blocks remaining
+#
+
+
+# allow the libs to be in the bin dir
+use FindBin;
+use lib "$FindBin::RealBin/lib";
+use lib "/home/hamish/s/bin/lib";
+
+use Data::Dumper;
+$Data::Dumper::Indent = 1;
+$Data::Dumper::Sortkeys = 1;
+$Data::Dumper::Quotekeys = 0;
+
+use IO::File;
+use File::Basename;
+
+use Compellent::Session;
+use CredentialStore;
+use NagiosOutput;
+use HackCache;
+
+use HC::Common;
+
+my $option = {
+};
+my @option_list = (
+    "host=s",
+    "username=s",
+    "password=s",
+    "no-check-certificate!",
+    "credfile=s",
+    "threshold=s",
+    "verbose+",
+    "logdir=s",
+);
+
+sub boilerplate_setup_chunk {
+    my ($username,$password);
+    if (defined($option->{credfile})) {
+        my $cred = CredentialStore->new($option->{credfile});
+        die("credfile error") if (!defined($cred));
+
+        ($username,$password) = $cred->lookup($option->{host});
+    }
+
+    if (defined($option->{username})) {$username = $option->{username};}
+    if (defined($option->{password})) {$password = $option->{password};}
+
+    # required options
+    die("need host parameter\n") if (!defined($option->{host}));
+    die("need username parameter\n") if (!defined($username));
+    die("need password parameter\n") if (!defined($password));
+    die("need threshold parameter\n") if (!defined($option->{threshold}));
+
+    my $compellent = Compellent::Session->new();
+    $compellent->set_baseurl("https://".$option->{host});
+    $compellent->set_username($username);
+    $compellent->set_password($password);
+
+    if (defined($option->{'no-check-certificate'})) {
+        $compellent->no_check_certificate();
+    }
+    return $compellent;
+}
+
+sub boilerplate_state_chunk {
+    my $cache = HackCache->new();
+    return undef if (!defined($cache));
+
+    my $script = basename($0);
+
+    $cache->set_maxage(8*60*60); # 8 hours
+    $cache->set_cachedir($ENV{'HOME'}.'/.cache/compellent/'.$script);
+
+    return $cache;
+}
+
+sub write_log {
+    my $key = shift;
+    my $script = basename($0);
+
+    return undef if (!defined($option->{logdir}));
+
+    my $filename = $option->{logdir}.'/'.$script.'.log';
+    my $fh = IO::File->new($filename,'a');
+    return undef if (!defined($fh));    # TODO - output an error?
+
+    return $fh->print(@_,"\n");
+}
+
+sub get_sum_blocksremaining {
+    my ($compellent) = @_;
+
+    # output the total of the table CMS BlocksRemaining column
+
+    my $table_cms = $compellent->table('TYPE_CMS');
+
+    if (!defined($table_cms)) {
+        #$compellent->set_errcode(-1);
+        #$compellent->set_errmsg('No Copy/Mirror/Swap table on this compellent');
+        return undef;
+    }
+
+    my $blocksremaining = 0;
+    $table_cms->foreach(sub {
+        # TODO - ensure that volumes in state "sync done" are not counted?
+        $blocksremaining+=$_->field('BlocksRemaining');
+    });
+
+    return $blocksremaining;
+}
+
+sub current_rate {
+    my ($db,$blocks) = @_;
+    my $time = time();
+
+    my $current_rate;
+
+    if (defined($db->{prev_time}) && defined($db->{prev_blocks})) {
+        $db->{delta_time} = $time - $db->{prev_time};
+        $db->{delta_blocks} = $blocks - $db->{prev_blocks};
+
+        # remember: cannot get a rate with no delta.time
+        if ($db->{delta_time} > 0) {
+            $current_rate = $db->{delta_blocks} / $db->{delta_time};
+        }
+    } else {
+        delete $db->{delta_time};
+        delete $db->{delta_blocks};
+    }
+
+    $db->{prev_time} = $time;
+    $db->{prev_blocks} = $blocks;
+
+    return $current_rate;
+}
+
+sub update_recent_rates {
+    my ($db,$current_rate) = @_;
+
+    if (defined($current_rate)) {
+        if ($current_rate < 0) {
+            unshift @{$db->{recent_rates}}, $current_rate;
+
+            # truncate the recent rate list to a minimum of 4 hours
+            @{$db->{recent_rates}} = @{$db->{recent_rates}}[0..47];
+        }
+    }
+    return 1;
+}
+
+sub mean {
+    my $count=0;
+    my $sum;
+    foreach (@_) {
+        next if (!defined($_));
+        $count++;
+        $sum += $_;
+    }
+    return 0 if ($count==0);
+
+    return $sum/$count;
+}
+
+sub main {
+    HC::Common::do_options($option,@option_list);
+    return if (defined($option->{help}));
+
+    my $compellent = boilerplate_setup_chunk();
+    my $statecache = boilerplate_state_chunk();
+
+    my $statecachekey = $option->{host};
+
+    my $db = $statecache->get($statecachekey);
+    if (!defined($db)) {
+        # no cached state? just create a new empty one
+        $db = {};
+    }
+
+    my $blocksremaining = get_sum_blocksremaining($compellent);
+    if (!defined($blocksremaining)) {
+        NagiosOutput::UNKNOWN('INTERNAL ERROR: '.$compellent->errcode().' '.$compellent->errmsg());
+    }
+
+    my $output = {};
+    $output->{time}            = time();
+    $output->{blocksremaining} = $blocksremaining;
+    $output->{average_rate}    = mean(@{$db->{recent_rates}});
+
+    if (($blocksremaining+$output->{average_rate})<=0) {
+        # if we are in sync - or very close to it,
+        # then we dont want to distort things by adding this to the history
+        #
+        # FIXME - should really use the delta_time to multiply the
+        # average_rate
+
+        $output->{current_rate}    = '\N';
+        $output->{remaining_time } = 0;
+
+        # however, we do need to forget the prev values
+        delete $db->{prev_time};
+        delete $db->{prev_blocks};
+    } else {
+        # add the current data to the pool and recalculate the average sync rate
+
+        my $current_rate = current_rate($db,$blocksremaining);
+        update_recent_rates($db,$current_rate);
+
+        $output->{current_rate}    = $current_rate || '\N';
+
+        if ($output->{average_rate}) {
+            # avoid division by zero
+            $output->{remaining_time} = 
+                abs($blocksremaining / $output->{average_rate});
+        } else {
+            $output->{remaining_time} = -1;
+        }
+    }
+
+    # TODO:
+    # if remaining_time > threshold then state=CRIT
+    # if remaining_time > threshold/2 then state=WARN
+    # else state=OK
+    #
+    # accumulate state-seconds counts in the db
+
+    if (!defined($statecache->put($statecachekey,$db))) {
+        NagiosOutput::UNKNOWN('INTERNAL ERROR: saving state file');
+    }
+
+    if (!$output->{average_rate}) {
+        NagiosOutput::UNKNOWN('Insufficient datapoints');
+    }
+
+
+    my $logline = join(' ', map {$output->{$_}} qw(
+        time
+        blocksremaining
+        current_rate
+        average_rate
+        remaining_time
+    ));
+    write_log($statecachekey,$logline);
+
+    if ($option->{verbose}) {
+        print($logline,"\n");
+    }
+
+    my @outputstrs;
+    foreach (sort keys %{$output}) {
+        push @outputstrs,$_.'='.$output->{$_};
+    }
+
+    NagiosOutput::OK(join(', ',@outputstrs));
+}
+main();
+
