@@ -319,10 +319,6 @@ sub xml2hackdb {
 sub table {
     my ($self,$tablename) = @_;
 
-    if (defined($self->{_table}{$tablename})) {
-        return $self->{_table}{$tablename};
-    }
-
     my $xml = $self->_query('NAME_GETBULKCSV',$tablename);
     return undef if (!defined($xml));
 
@@ -332,7 +328,6 @@ sub table {
         $self->set_errmsg('xml table error');
     }
 
-    $self->{_table}{$tablename} = $table;
     return $table;
 }
 
