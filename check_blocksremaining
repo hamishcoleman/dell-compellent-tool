@@ -86,7 +86,7 @@ sub write_log {
 
     return undef if (!defined($option->{logdir}));
 
-    my $filename = $option->{logdir}.'/'.$script.'.log';
+    my $filename = $option->{logdir}.'/'.$script.'.'.$key.'.log';
     my $fh = IO::File->new($filename,'a');
     return undef if (!defined($fh));    # TODO - output an error?
 
@@ -233,11 +233,6 @@ sub main {
         NagiosOutput::UNKNOWN('INTERNAL ERROR: saving state file');
     }
 
-    if (!$output->{average_rate}) {
-        NagiosOutput::UNKNOWN('Insufficient datapoints');
-    }
-
-
     my $logline = join(' ', map {$output->{$_}} qw(
         time
         blocksremaining
@@ -250,6 +245,11 @@ sub main {
     if ($option->{verbose}) {
         print($logline,"\n");
     }
+
+    if (!$output->{average_rate}) {
+        NagiosOutput::UNKNOWN('Insufficient datapoints');
+    }
+
 
     my @outputstrs;
     foreach (sort keys %{$output}) {
