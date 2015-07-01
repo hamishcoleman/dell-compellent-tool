@@ -19,6 +19,8 @@ $Data::Dumper::Quotekeys = 0;
 use IO::File;
 use File::Basename;
 
+use File::Path qw(make_path);
+
 use Compellent::Session;
 use CredentialStore;
 use NagiosOutput;
@@ -27,7 +29,8 @@ use HackCache;
 use HC::Common;
 
 my $option = {
-    verbose => 0,
+    verbose  => 0,
+    cachedir => $ENV{'HOME'}.'/.cache/compellent',
 };
 my @option_list = (
     "host=s",
@@ -38,6 +41,7 @@ my @option_list = (
     "threshold=s",
     "verbose+",
     "logdir=s",
+    "cachedir=s",
 );
 
 sub boilerplate_setup_chunk {
@@ -62,6 +66,7 @@ sub boilerplate_setup_chunk {
     $compellent->set_baseurl("https://".$option->{host});
     $compellent->set_username($username);
     $compellent->set_password($password);
+    $compellent->cache->set_cachedir($option->{cachedir});
 
     if (defined($option->{'no-check-certificate'})) {
         $compellent->no_check_certificate();
@@ -76,7 +81,7 @@ sub boilerplate_state_chunk {
     my $script = basename($0);
 
     $cache->set_maxage(8*60*60); # 8 hours
-    $cache->set_cachedir($ENV{'HOME'}.'/.cache/compellent/'.$script);
+    $cache->set_cachedir($option->{cachedir}.'/'.$script);
 
     return $cache;
 }
@@ -86,6 +91,11 @@ sub write_log {
     my $script = basename($0);
 
     return undef if (!defined($option->{logdir}));
+    if (! -e $option->{logdir}) {
+        # Doesnt exist, try to make it, or just fail
+        # TODO - output an error?
+        return undef if (! make_path($option->{logdir}));
+    }
 
     my $filename = $option->{logdir}.'/'.$script.'.'.$key.'.log';
     my $fh = IO::File->new($filename,'a');

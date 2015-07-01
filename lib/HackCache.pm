@@ -26,9 +26,6 @@ sub _maxage { return shift->{maxage}; }
 sub set_cachedir {
     my $self = shift;
 
-    # only let it be set once
-    return undef if (defined($self->_cachedir()));
-
     my $cachedir = shift;
     $self->{cachedir} = $cachedir;
 
