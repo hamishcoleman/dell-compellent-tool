@@ -216,16 +216,24 @@ sub main {
             $output->{remaining_time} = 
                 abs($blocksremaining / $output->{average_rate});
         } else {
-            $output->{remaining_time} = -1;
+            $output->{remaining_time} = '\N';
         }
     }
 
-    # TODO:
-    # if remaining_time > threshold then state=CRIT
-    # if remaining_time > threshold/2 then state=WARN
-    # else state=OK
-    #
-    # accumulate state-seconds counts in the db
+    if (!$output->{average_rate}) {
+        $output->{state} = 'UNKNOWN';
+    } elsif ($output->{remaining_time} > $option->{threshold}) {
+        $output->{state} = 'CRITICAL';
+    } elsif ($output->{remaining_time} > ($option->{threshold}/2)) {
+        $output->{state} = 'WARNING';
+    } else {
+        $output->{state} = 'OK';
+    }
+
+    if (defined($db->{delta}{time})) {
+        $db->{accumulate}{$output->{state}} += $db->{delta}{time};
+    }
+    $output->{accumulate_CRIT} = $db->{accumulate}{CRITICAL} || '\N';
 
     if (!defined($statecache->put($statecachekey,$db))) {
         NagiosOutput::UNKNOWN('INTERNAL ERROR: saving state file');
@@ -237,6 +245,7 @@ sub main {
         current_rate
         average_rate
         remaining_time
+        accumulate_CRIT
     ));
     write_log($statecachekey,$logline);
 
@@ -254,7 +263,7 @@ sub main {
         push @outputstrs,$_.'='.$output->{$_};
     }
 
-    NagiosOutput::OK(join(', ',@outputstrs));
+    NagiosOutput::state($output->{state},join(', ',@outputstrs));
 }
 main();
 
