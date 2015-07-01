@@ -27,6 +27,7 @@ use HackCache;
 use HC::Common;
 
 my $option = {
+    verbose => 0,
 };
 my @option_list = (
     "host=s",
@@ -166,6 +167,44 @@ sub mean {
     return $sum/$count;
 }
 
+# given a number of seconds, return a human readable string (with less accuracy
+# as the magnitude goes up)
+sub seconds2duration($) {
+    my ($t) = @_;
+    my $unit;
+
+    if ($t < 60) {
+            $unit = 'second';
+    } else {
+        $t = $t / 60;
+        if ($t < 60) {
+                $unit = 'minute';
+        } else {
+            $t = $t / 60;
+            if ($t < 24) {
+                    $unit = 'hour';
+            } else {
+                $t = $t / 24;
+                if ($t < 7) {
+                        $unit = 'day';
+                } else {
+                    $t = $t / 7;
+                    $unit = 'week';
+                }
+            }
+        }
+    }
+
+    $t = sprintf("%.1f", $t);
+
+    if ($t>1) {
+        $unit.='s';
+    }
+
+    return $t.' '.$unit;
+}
+
+
 sub main {
     HC::Common::do_options($option,@option_list);
     return if (defined($option->{help}));
@@ -249,7 +288,8 @@ sub main {
     ));
     write_log($statecachekey,$logline);
 
-    if ($option->{verbose}) {
+    # at higher levels of verbosity, show the line that would be logged
+    if ($option->{verbose}>1) {
         print($logline,"\n");
     }
 
@@ -257,13 +297,22 @@ sub main {
         NagiosOutput::UNKNOWN('Insufficient datapoints');
     }
 
+    my $nagios_output;
 
-    my @outputstrs;
-    foreach (sort keys %{$output}) {
-        push @outputstrs,$_.'='.$output->{$_};
+    $nagios_output = sprintf(
+        "%s to complete replication (threshold is %s)",
+        seconds2duration($output->{remaining_time}),
+        seconds2duration($option->{threshold}),
+    );
+
+    if ($option->{verbose}) {
+        my @outputstrs;
+        foreach (sort keys %{$output}) {
+            $nagios_output .= ', '.$_.'='.$output->{$_};
+        }
     }
 
-    NagiosOutput::state($output->{state},join(', ',@outputstrs));
+    NagiosOutput::state($output->{state},$nagios_output);
 }
 main();
 
