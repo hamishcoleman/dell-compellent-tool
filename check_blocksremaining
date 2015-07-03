@@ -246,7 +246,7 @@ sub seconds2duration($) {
 
     $t = sprintf("%.1f", $t);
 
-    if ($t>1) {
+    if (($t>1) or ($t==0)) {
         $unit.='s';
     }
 
