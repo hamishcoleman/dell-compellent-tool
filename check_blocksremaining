@@ -30,7 +30,6 @@ use HC::Common;
 
 my $option = {
     verbose  => 0,
-    cachedir => $ENV{'HOME'}.'/.cache/compellent',
 };
 my @option_list = (
     "host=s",
@@ -40,9 +39,49 @@ my @option_list = (
     "credfile=s",
     "threshold=s",
     "verbose+",
+    "log!",
     "logdir=s",
     "cachedir=s",
 );
+
+sub calculate_cachedir {
+    if (defined($option->{cachedir})) {
+        # manually setting it on the cmdline takes precedence
+        return $option->{cachedir};
+    }
+    if (defined($ENV{'NAGIOS_OBJECTCACHEFILE'})) {
+        # if we are in a nagios environment, use the same dir
+        return dirname($ENV{'NAGIOS_OBJECTCACHEFILE'}).'/compellent';
+    }
+
+    # finally, fall back to something in our home directory
+    return $ENV{'HOME'}.'/.cache/compellent';
+}
+
+sub boilerplate_setup_logdir {
+    if (defined($option->{logdir})) {
+        # manually setting it on the cmdline takes precedence
+        # no need to do anything else
+        return;
+    }
+    if (!defined($option->{log})) {
+        # logging is not requested to be turned on, also no
+        # need for us to do anything
+        return;
+    }
+
+    # to get here, we know that we want logs, but we dont have any
+    # explicit logdir
+
+    if (defined($ENV{'NAGIOS_LOGFILE'})) {
+        # if we are in a nagios environment, use the same dir
+        $option->{logdir}=dirname($ENV{'NAGIOS_LOGFILE'}).'/compellent';
+        return;
+    }
+
+    # otherwise, fall back to something in our home directory
+    $option->{logdir}=$ENV{'HOME'}.'/.log/compellent';
+}
 
 sub boilerplate_setup_chunk {
     my ($username,$password);
@@ -66,7 +105,7 @@ sub boilerplate_setup_chunk {
     $compellent->set_baseurl("https://".$option->{host});
     $compellent->set_username($username);
     $compellent->set_password($password);
-    $compellent->cache->set_cachedir($option->{cachedir});
+    $compellent->cache->set_cachedir(calculate_cachedir());
 
     if (defined($option->{'no-check-certificate'})) {
         $compellent->no_check_certificate();
@@ -81,7 +120,7 @@ sub boilerplate_state_chunk {
     my $script = basename($0);
 
     $cache->set_maxage(8*60*60); # 8 hours
-    $cache->set_cachedir($option->{cachedir}.'/'.$script);
+    $cache->set_cachedir(calculate_cachedir().'/'.$script);
 
     return $cache;
 }
@@ -221,6 +260,7 @@ sub main {
 
     my $compellent = boilerplate_setup_chunk();
     my $statecache = boilerplate_state_chunk();
+    boilerplate_setup_logdir();
 
     my $statecachekey = $option->{host};
 
