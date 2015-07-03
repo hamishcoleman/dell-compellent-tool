@@ -25,7 +25,9 @@ sub new {
     $self->set_ua($ua);
 
     my $cache = HackCache->new();
-    $cache->set_cachedir($ENV{'HOME'}.'/.cache/compellent');
+    if (defined($ENV{'HOME'})) {
+        $cache->set_cachedir($ENV{'HOME'}.'/.cache/compellent');
+    }
     $self->set_cache($cache);
 
     return $self;
