@@ -272,7 +272,7 @@ sub main {
 
     my $blocksremaining = get_sum_blocksremaining($compellent);
     if (!defined($blocksremaining)) {
-        NagiosOutput::UNKNOWN('INTERNAL ERROR: '.$compellent->errcode().' '.$compellent->errmsg());
+        NagiosOutput::UNKNOWN('COMPELLENT ERROR: '.$compellent->errcode().' '.$compellent->errmsg());
     }
 
     my $output = {};
