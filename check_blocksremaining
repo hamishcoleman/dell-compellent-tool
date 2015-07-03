@@ -48,7 +48,7 @@ sub boilerplate_setup_chunk {
     my ($username,$password);
     if (defined($option->{credfile})) {
         my $cred = CredentialStore->new($option->{credfile});
-        die("credfile error") if (!defined($cred));
+        NagiosOutput::UNKNOWN("credfile error") if (!defined($cred));
 
         ($username,$password) = $cred->lookup($option->{host});
     }
@@ -57,10 +57,10 @@ sub boilerplate_setup_chunk {
     if (defined($option->{password})) {$password = $option->{password};}
 
     # required options
-    die("need host parameter\n") if (!defined($option->{host}));
-    die("need username parameter\n") if (!defined($username));
-    die("need password parameter\n") if (!defined($password));
-    die("need threshold parameter\n") if (!defined($option->{threshold}));
+    NagiosOutput::UNKNOWN("need hostname") if (!defined($option->{host}));
+    NagiosOutput::UNKNOWN("need username") if (!defined($username));
+    NagiosOutput::UNKNOWN("need password") if (!defined($password));
+    NagiosOutput::UNKNOWN("need threshold") if (!defined($option->{threshold}));
 
     my $compellent = Compellent::Session->new();
     $compellent->set_baseurl("https://".$option->{host});
