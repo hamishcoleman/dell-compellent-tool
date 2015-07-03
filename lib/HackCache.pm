@@ -13,7 +13,7 @@ sub new {
     my $self = {};
     bless $self, $class;
 
-    $self->set_maxage(4*60); # TODO - is this a good default?
+    $self->set_maxage(2*60); # TODO - is this a good default?
 
     #$self->_handle_args(@_);
 
