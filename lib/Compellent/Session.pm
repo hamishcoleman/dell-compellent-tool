@@ -10,7 +10,7 @@ use IO::Socket::SSL;
 use XML::Twig;
 
 use HackDB;
-use HackCache;
+use HC::Cache::Dir;
 
 sub new {
     my $class = shift;
@@ -24,7 +24,7 @@ sub new {
     $self->set_sessionstate('new');
     $self->set_ua($ua);
 
-    my $cache = HackCache->new();
+    my $cache = HC::Cache::Dir->new();
     if (defined($ENV{'HOME'})) {
         $cache->set_cachedir($ENV{'HOME'}.'/.cache/compellent');
     }

@@ -24,8 +24,8 @@ use File::Path qw(make_path);
 use Compellent::Session;
 use CredentialStore;
 use NagiosOutput;
-use HackCache;
 
+use HC::Cache::Dir;
 use HC::Common;
 
 my $option = {
@@ -114,7 +114,7 @@ sub boilerplate_setup_chunk {
 }
 
 sub boilerplate_state_chunk {
-    my $cache = HackCache->new();
+    my $cache = HC::Cache::Dir->new();
     return undef if (!defined($cache));
 
     my $script = basename($0);
