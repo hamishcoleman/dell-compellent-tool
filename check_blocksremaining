@@ -22,9 +22,9 @@ use File::Basename;
 use File::Path qw(make_path);
 
 use Compellent::Session;
-use CredentialStore;
 use NagiosOutput;
 
+use HC::CredentialStore;
 use HC::Cache::Dir;
 use HC::Common;
 
@@ -86,7 +86,7 @@ sub boilerplate_setup_logdir {
 sub boilerplate_setup_chunk {
     my ($username,$password);
     if (defined($option->{credfile})) {
-        my $cred = CredentialStore->new($option->{credfile});
+        my $cred = HC::CredentialStore->new($option->{credfile});
         NagiosOutput::UNKNOWN("credfile error") if (!defined($cred));
 
         ($username,$password) = $cred->lookup($option->{host});

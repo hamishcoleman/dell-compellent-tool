@@ -16,7 +16,12 @@ build_dep_rpm:
 
 install: clean
 	install -d $(INSTALLDIR)
+	install -d $(INSTALLDIR)/lib/HC
+	install -d $(INSTALLDIR)/lib/HC/Cache
 	cp -pr lib $(INSTALLDIR)
+	install -p -t $(INSTALLDIR)/lib/HC ~/s/bin/lib/HC/Common.pm
+	install -p -t $(INSTALLDIR)/lib/HC ~/s/bin/lib/HC/CredentialStore.pm
+	install -p -t $(INSTALLDIR)/lib/HC/Cache ~/s/bin/lib/HC/Cache/Dir.pm
 	install -p -t $(INSTALLDIR) clitest check_blocksremaining
 	echo install -p test_harness $(INSTALLDIR)
 	echo cp -pr HC $(INSTALLDIR)
