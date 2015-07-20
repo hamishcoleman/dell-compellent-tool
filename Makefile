@@ -14,6 +14,8 @@ build_dep:
 build_dep_rpm:
 	yum install perl-Text-CSV perl-Crypt-SSLeay perl-IO-Socket-SSL perl-XML-Twig
 
+# TODO, FIXME - my standard libs should be managed via a submodule
+
 install: clean
 	install -d $(INSTALLDIR)
 	install -d $(INSTALLDIR)/lib/HC
