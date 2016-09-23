@@ -5,6 +5,15 @@ use strict;
 # quick commandline test tool
 #
 
+# TODO
+# - blocksremaining
+#       - ensure that volumes in state "sync done" are not counted
+# - pitc report
+#       - detect the time between changes in pitc number
+#       - WARN if it has not changed for over threshold/2
+#       - CRIT if it has not changed for over threshold
+#
+
 # allow the libs to be in the bin dir
 use FindBin;
 use lib "$FindBin::RealBin/lib";
