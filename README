@@ -1,0 +1,27 @@
+A small library to get data from a compellent.
+
+
+
+
+Using the test tool to download data from a table:
+
+Q: What is the current PITC for each volume?
+
+A:
+./clitest --no-check-certificate --username=Admin \
+    --host=$HOSTNAME --password=$PASSWORD \
+    table TYPE_VOLUME OperStatus 1 Index Name ActivePitcIndex
+
+Index,Name,ActivePitcIndex
+115,vol9,15000
+126,vol10,50484
+130,vol11,43922
+132,vol12,33440
+146,vol13,15274
+153,vol14,5
+155,vol15,15025
+157,vol16,8998
+161,vol17,4784
+163,vol18,4174
+164,vol19,4173
+
