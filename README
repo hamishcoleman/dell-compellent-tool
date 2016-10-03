@@ -1,9 +1,24 @@
-A small library to get data from a compellent.
+A small library to get data from a compellent, including a Nagios check.
+
+The nagios check will check the replication status and provide a
+warning if the estimated time to finish the replication is above the
+given threshold.  For an example of how to use the nagios check,
+see the templates-compellent.cfg file.
+
+The nagios check will also optionally create a log file that can be
+used to graph the performance of the replication.  This file is a
+space-separated format with the following columns
+
+    current_time
+    blocksremaining
+    current_rate
+    average_rate
+    remaining_time
+    accumulate_time_in_CRIT
 
 
 
-
-Using the test tool to download data from a table:
+Example of using the test tool to download data from a table:
 
 Q: What is the current PITC for each volume?
 
@@ -25,3 +40,30 @@ Index,Name,ActivePitcIndex
 163,vol18,4174
 164,vol19,4173
 
+
+clitest has the following sub-commands:
+
+table $tablename [$column $matchto [$row ...]]
+    Do a generic table download (See the tables.seen.txt file for possible
+    table names)
+
+repl_blocksremaining
+    output the total of the table TYPE_CMS BlocksRemaining column
+
+repl_stateok
+    ** This report does not provide completely known data **
+    want a report that says that replication is not paused, is
+    not missing and a couple of other things
+
+repl_missing
+    give a report on which volumes do not have replication setup
+
+    "replication setup" is defined as showing up as either the source
+    or dest volume in the copy/mirror/swap table
+
+repl_pitc
+    give a report on the date of the most recent PITC for each volume
+
+If none of the above sub-commands are given, then the commandline is
+interpreted as a raw query type and table name. (useful mostly for
+debugging)
