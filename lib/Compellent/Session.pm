@@ -9,7 +9,7 @@ use LWP::UserAgent;
 use IO::Socket::SSL;
 use XML::Twig;
 
-use HackDB;
+use HC::HackDB;
 use HC::Cache::Dir;
 
 sub new {
@@ -314,7 +314,7 @@ sub xml2hackdb {
     my $data = $datanode->text();
     CORE::open(my $fh,"<",\$data);
 
-    my $hackdb = HackDB->new();
+    my $hackdb = HC::HackDB->new();
     $hackdb->set_column_names(@column_names);
     $hackdb->load_csv($fh);
 

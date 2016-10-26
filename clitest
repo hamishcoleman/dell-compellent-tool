@@ -145,7 +145,7 @@ sub main {
             return undef; # TODO - return an errorcode
         }
 
-        my $table_cms_filter = HackDB->new();
+        my $table_cms_filter = HC::HackDB->new();
         $table_cms->foreach(sub {
             my $state = $_->field('State');
             return if ($state == 6); # 6 = running == ok
@@ -239,7 +239,7 @@ sub main {
         });
 
         # rebuild the table with only the lastseen rows
-        $pitc = HackDB->new();
+        $pitc = HC::HackDB->new();
         for my $row (values(%{$lastseen})) {
             $pitc->_add_row($row);
         }
